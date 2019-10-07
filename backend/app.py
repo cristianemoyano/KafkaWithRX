@@ -1,3 +1,4 @@
+
 from consumer import MyImplementation1
 from initializer import RXInitializer
 from flask import Flask
@@ -15,4 +16,5 @@ if __name__ == "__main__":
         MyImplementation1()
     ])
     initializer.run()
-    app.run()
+    # app.run(host='0.0.0.0', port=5001)
+    # app.run()

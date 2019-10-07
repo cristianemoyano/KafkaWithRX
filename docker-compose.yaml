@@ -1,23 +1,46 @@
-version: '2'
+version: '3'
+
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    network_mode: host
+    image: confluentinc/cp-zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
     environment:
-      ZOOKEEPER_CLIENT_PORT: 32181
-      ZOOKEEPER_TICK_TIME: 2000
-    extra_hosts:
-      - "moby:127.0.0.1"
+        ZOOKEEPER_CLIENT_PORT: 2181
+        ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - ./zk-single-kafka-single/zookeeper/data:/data
+      - ./zk-single-kafka-single/zookeeper/datalog:/datalog
 
   kafka:
-    image: confluentinc/cp-kafka:latest
-    network_mode: host
+    image: confluentinc/cp-enterprise-kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    expose:
+    - "9093"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,OUTSIDE://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - ./zk-single-kafka-single/kafka/data:/var/lib/kafka/data
     depends_on:
       - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: localhost:32181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:29092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    extra_hosts:
-      - "moby:127.0.0.1"
+
+  web-app:
+    build: .
+    depends_on:
+    - "kafka"
+    volumes:
+      - ./backend:/app/backend
+    ports:
+    - "5000:5000"

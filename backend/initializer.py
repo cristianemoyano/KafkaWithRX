@@ -1,5 +1,6 @@
 # import multiprocessing
 import rx
+from rx import operators as ops
 
 from multiprocessing import Process
 from concurrent.futures import ProcessPoolExecutor
@@ -8,16 +9,19 @@ from concurrent.futures import ProcessPoolExecutor
 # def process_initializer(iterable, consumer):
 def worker(consumer):
     # num_cores = multiprocessing.cpu_count()
-    with ProcessPoolExecutor(20) as executor:
-        rx.Observable.from_(consumer.iterable).flat_map(
-            lambda msg: executor.submit(consumer.process_consumer, msg)
+    with ProcessPoolExecutor(3) as executor:
+        rx.from_(consumer.iterable).pipe(
+            ops.map(
+                lambda msg: executor.submit(consumer.process_consumer, msg)
+            ),
         ).subscribe(consumer)
 
 
-class RXInitializer:
+class RXInitializer(object):
 
     def __init__(self, consumers):
-        self.__processes = self.__get_processes(consumers)
+        self.processes = self.__get_processes(consumers)
+        print("Get process: ", self.processes)
 
     def __get_processes(self, consumers):
         return [
@@ -28,11 +32,11 @@ class RXInitializer:
     def run(self):
         [
             process.start()
-            for process in self.__processes
+            for process in self.processes
         ]
 
     def release(self):
         return [
             process.join()
-            for process in self.__processes
+            for process in self.processes
         ]
